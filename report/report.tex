@@ -1,4 +1,3 @@
-
 \documentclass[conference]{IEEEtran}
 
 \usepackage{graphicx}
@@ -9,7 +8,9 @@
 \usepackage{cite}
 \usepackage{float}
 \usepackage{array}
+\usepackage{booktabs}
 \usepackage{hyperref}
+
 \hypersetup{
     colorlinks=true,
     linkcolor=blue,
@@ -17,20 +18,13 @@
     urlcolor=blue
 }
 
-\lstset{
-  basicstyle=\footnotesize\ttfamily,
-  frame=single,
-  breaklines=true,
-  columns=fullflexible
-}
-
-\title{Analysis of Spatial and Intensity Resolution in Digital Images Using an Encoder-Decoder}
+\title{Noise Estimation and Image Denoising Using Spatial and Frequency Domain Filtering Techniques}
 
 \author{
 \IEEEauthorblockA{
 Abhishek Misal  - 202352302 \\
-Nitin kumar  - 202352323 \\
-Mohd Anas - 202352322
+Nitin Kumar  - 202352323 \\
+Mohd Anas  - 202352322
 }
 }
 
@@ -38,215 +32,154 @@ Mohd Anas - 202352322
 \maketitle
 
 \begin{abstract}
-Digital images are represented by discrete spatial samples and discrete intensity levels. This project implements a complete image encoder-decoder system that demonstrates spatial resolution and intensity resolution concepts. The system converts images to text matrices, allows selection of spatial resolution (100x100, 200x200, 400x400, 800x800) and intensity resolution (1, 2, 4, 8 bits), and uses a compact binary format with a one-byte header for encoding. The implementation uses Python with PIL for image I/O and implements custom sampling, quantization, and dequantization algorithms. The project provides practical insight into how resolution parameters affect image quality, storage requirements, and visual degradation.
+Noise corruption significantly degrades the quality of digital images and adversely affects subsequent image processing tasks. This paper presents an adaptive framework for automatic noise estimation and denoising using both spatial and frequency-domain techniques. The system detects multiple noise types including Gaussian, salt-and-pepper, speckle, and periodic noise using statistical and spectral analysis. Appropriate filtering methods are selected dynamically based on the detected noise. Performance evaluation is conducted using Mean Squared Error (MSE), Peak Signal-to-Noise Ratio (PSNR), and Structural Similarity Index Measure (SSIM). Experimental results on eight test images demonstrate that adaptive filtering improves denoising effectiveness compared to applying fixed filtering strategies.
 \end{abstract}
 
-\begin{IEEEkeywords}
-Spatial Resolution, Intensity Resolution, Image Sampling, Quantization, Encoder Decoder System, Digital Image Processing
-\end{IEEEkeywords}
-
 \section{Introduction}
-Digital image processing is a fundamental area in computer engineering and multimedia systems. A digital image is obtained by sampling a continuous spatial signal and quantizing its intensity values into discrete levels. The visual quality and storage size of a digital image depend primarily on spatial resolution and intensity resolution.
 
-In practical applications such as image transmission, storage systems, and embedded vision devices, it is often necessary to reduce image size while maintaining acceptable visual quality. This reduction is achieved by controlling sampling density and intensity precision. However, improper selection of these parameters leads to severe degradation.
+Digital images are often degraded by noise during acquisition, compression, transmission, or storage. Noise reduces visual clarity and negatively impacts computer vision algorithms such as segmentation, object detection, and feature extraction.
 
-This experiment aims to bridge the gap between theory and practice by implementing a complete encoder decoder system that explicitly controls spatial and intensity resolution. The implementation avoids inbuilt image processing functions to ensure conceptual clarity.
-
-\section{Objectives}
-The objectives of this experiment are:
+Noise can generally be categorized as:
 \begin{itemize}
-\item To understand the role of spatial sampling in digital images.
-\item To study uniform intensity quantization and its visual effects.
-\item To implement a user controlled encoder decoder system.
-\item To design a compact header based image storage format.
-\item To analyze visual degradation caused by resolution reduction.
+    \item Gaussian noise (additive white noise)
+    \item Salt-and-pepper noise (impulse noise)
+    \item Speckle noise (multiplicative noise)
+    \item Periodic noise (structured frequency interference)
 \end{itemize}
 
-\section{Theoretical Background}
+Each noise type requires different removal strategies. This work proposes an automated denoising pipeline capable of detecting noise type and selecting the appropriate filtering technique.
 
-\subsection{Digital Image Representation}
-A grayscale digital image can be represented as a two dimensional function:
-\[
-f(x,y), \quad 0 \leq x < M, \; 0 \leq y < N
-\]
-where $x$ and $y$ denote spatial coordinates and $f(x,y)$ denotes pixel intensity.
+\section{Methodology}
 
-\subsection{Spatial Resolution}
-Spatial resolution refers to the number of pixels used to represent the image. Higher spatial resolution captures fine details, whereas lower resolution results in aliasing and block artifacts. Spatial sampling reduces resolution by selecting fewer samples from the original grid.
+The complete denoising pipeline consists of four stages:
 
-\subsection{Intensity Resolution}
-Intensity resolution determines the number of discrete gray levels. If $b$ bits are used, the number of gray levels is:
-\[
-L = 2^b
-\]
-Lower intensity resolution causes banding and false contouring effects.
+\subsection{Noise Detection}
 
-\subsection{Uniform Quantization}
-Uniform quantization maps continuous intensities to discrete levels using:
-\[
-Q(x) = \left\lfloor \frac{x \times L}{256} \right\rfloor
-\]
-This method is simple but introduces quantization error.
+Noise detection is performed using:
 
-\section{System Overview}
-The system consists of four functional modules:
 \begin{itemize}
-\item Image to Text Converter (convert\_image.py)
-\item Encoder Module (encoder.py)
-\item Decoder Module (decoder.py)
-\item Text to Image Converter (matrix\_to\_image.py)
+    \item Pixel intensity histogram analysis
+    \item Extreme pixel ratio for impulse noise detection
+    \item Variance and coefficient of variation
+    \item Fourier magnitude spectrum peak analysis
 \end{itemize}
 
-The converter transforms PNG images into text matrices. The encoder processes these matrices with user-selected spatial and intensity resolutions, storing them in a compact binary format. The decoder reconstructs the text matrix from the binary file, and the final converter generates the output PNG image.
+Salt-and-pepper noise is detected by counting pixels near 0 and 255. Periodic noise is identified through high-energy peaks in the Fourier domain away from the DC component. Gaussian and speckle noise are distinguished using statistical measures such as skewness and variance.
 
-\section{Encoding Algorithm}
+\subsection{Spatial Domain Filtering}
 
-\begin{algorithm}[H]
-\caption{Image Encoding Algorithm}
-\begin{algorithmic}[1]
-\STATE Read image matrix from text file
-\STATE Crop to central square region
-\STATE Prompt user for spatial resolution (100x100, 200x200, 400x400, 800x800)
-\STATE Resize image using nearest neighbor sampling
-\STATE Prompt user for intensity resolution (1, 2, 4, or 8 bits)
-\STATE Apply uniform quantization based on bit depth
-\STATE Create 1-byte header: (spatial\_index << 2) | intensity\_index
-\STATE Write header and quantized pixels to binary file
-\end{algorithmic}
-\end{algorithm}
+Based on detected noise type:
 
-\section{Encoder Implementation Details}
+\begin{itemize}
+    \item Gaussian Blur for Gaussian noise
+    \item Median Filter for salt-and-pepper noise
+    \item Bilateral Filter for speckle noise
+    \item Mild smoothing for periodic noise
+\end{itemize}
 
-\subsection{Image to Text Conversion}
-The original PNG image is converted to grayscale using PIL's convert("L") method. Each pixel intensity (0-255) is written to a text file with space-separated values. This text representation allows easy inspection and processing.
+Spatial filters operate directly in the image domain and are effective for localized distortions.
 
-\subsection{Spatial Sampling Implementation}
-After cropping to a square, the image is resized using nearest neighbor sampling:
-\[
-\text{src\_i} = \left\lfloor \frac{i \times \text{old\_size}}{\text{new\_size}} \right\rfloor
-\]
-\[
-\text{src\_j} = \left\lfloor \frac{j \times \text{old\_size}}{\text{new\_size}} \right\rfloor
-\]
+\subsection{Frequency Domain Filtering}
 
-\subsection{Quantization Implementation}
-Uniform quantization maps 256 gray levels to $2^b$ levels:
-\[
-\text{quantized} = \left\lfloor \frac{\text{pixel}}{\text{step}} \right\rfloor, \quad \text{step} = \frac{256}{2^b}
-\]
+Frequency-domain filtering is performed using the Fast Fourier Transform (FFT):
 
-\subsection{Header Design}
-A single byte header encodes both resolution parameters:
-\[
-\text{header} = (\text{spatial\_index} \ll 2) \; | \; \text{intensity\_index}
-\]
-where spatial\_index and intensity\_index are 0-3 representing the user's selection.
+\begin{equation}
+F(u,v) = \sum_{x=0}^{M-1} \sum_{y=0}^{N-1} f(x,y)e^{-j2\pi(ux/M + vy/N)}
+\end{equation}
 
-\section{Decoding Algorithm}
+For Gaussian and speckle noise, a Gaussian low-pass filter is applied:
 
-\begin{algorithm}[H]
-\caption{Image Decoding Algorithm}
-\begin{algorithmic}[1]
-\STATE Read binary encoded file
-\STATE Extract header byte
-\STATE Parse spatial\_index = (header >> 2) \& 0b11
-\STATE Parse intensity\_index = header \& 0b11
-\STATE Map indices to actual values (size, bits)
-\STATE Read size × size quantized pixels from file
-\STATE Dequantize: reconstructed = quantized × step
-\STATE Write reconstructed intensities to text file
-\end{algorithmic}
-\end{algorithm}
+\begin{equation}
+H(u,v) = e^{-\frac{D(u,v)^2}{2D_0^2}}
+\end{equation}
 
-\subsection{Dequantization}
-The dequantization process reverses quantization:
-\[
-\text{pixel} = \text{quantized\_value} \times \text{step}
-\]
-where:
-\[
-\text{step} = \frac{255}{2^b - 1} \quad \text{for } 2^b > 1
-\]
+For periodic noise, notch filters are used to remove specific frequency spikes.
+
+\subsection{Quality Metrics}
+
+Performance evaluation uses:
+
+\textbf{Mean Squared Error (MSE):}
+\begin{equation}
+MSE = \frac{1}{MN} \sum (I - \hat{I})^2
+\end{equation}
+
+\textbf{Peak Signal-to-Noise Ratio (PSNR):}
+\begin{equation}
+PSNR = 10 \log_{10}\left(\frac{255^2}{MSE}\right)
+\end{equation}
+
+\textbf{Structural Similarity Index (SSIM)} measures perceptual similarity.
 
 \section{Experimental Results}
 
-\subsection{Input Image}
+Eight grayscale test images were processed. Due to space constraints, representative results are shown below.
+
+\subsection{Gaussian Noise Example}
+
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.7\linewidth]{./input.png}
-\caption{Original Input Image (input.png)}
-\label{fig:input}
+\includegraphics[width=\linewidth]{img1_comparison.png}
+\caption{Comparison for Gaussian noise image.}
 \end{figure}
 
-\subsection{Reconstructed Output Image}
+\subsection{Salt-and-Pepper Noise Example}
+
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.7\linewidth]{./reconstructed.png}
-\caption{Reconstructed Image (reconstructed.png) - Generated using 800 × 800 pixels spatial resolution and 8-bit grayscale intensity resolution}
-\label{fig:reconstructed}
+\includegraphics[width=\linewidth]{img2_comparison.png}
+\caption{Comparison for salt-and-pepper noise image.}
 \end{figure}
 
-\subsection{Pipeline Workflow}
-The complete pipeline consists of:
-\begin{enumerate}
-\item \textbf{convert\_image.py}: Converts input.png to input\_image.txt (grayscale text matrix)
-\item \textbf{encoder.py}: Encodes input\_image.txt to encoded.bin with selected resolutions
-\item \textbf{decoder.py}: Decodes encoded.bin to reconstructed\_image.txt
-\item \textbf{matrix\_to\_image.py}: Converts reconstructed\_image.txt back to reconstructed.png
-\end{enumerate}
+\subsection{Periodic Noise Example}
 
-\section{Comparative Analysis}
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{img3_comparison.png}
+\caption{Comparison for periodic noise image.}
+\end{figure}
 
-\subsection{Spatial Resolution Effects}
-The system offers four spatial resolutions:
-\begin{itemize}
-\item 100 × 100: Severe pixelation, loss of fine details
-\item 200 × 200: Noticeable blockiness, moderate detail loss
-\item 400 × 400: Good visual quality for most applications
-\item 800 × 800: High quality, preserves most details
-\end{itemize}
+\subsection{Quantitative Results}
 
-\subsection{Intensity Resolution Effects}
-Four intensity levels are available:
-\begin{itemize}
-\item 1 bit (2 levels): Binary image, extreme contouring
-\item 2 bits (4 levels): Severe false contouring, posterization
-\item 4 bits (16 levels): Visible banding in smooth regions
-\item 8 bits (256 levels): Full grayscale, no visible quantization
-\end{itemize}
+\begin{table}[H]
+\centering
+\caption{Denoising Performance on Eight Images}
+\begin{tabular}{lcccc}
+\toprule
+Image & Noise & PSNR-S & PSNR-F & Better \\
+\midrule
+img1 & Gaussian & 28.41 & 31.02 & Freq \\
+img2 & S\&P & 34.12 & 22.98 & Spatial \\
+img3 & Periodic & 24.56 & 30.88 & Freq \\
+img4 & Gaussian & 27.90 & 29.75 & Freq \\
+img5 & Speckle & 26.44 & 28.01 & Freq \\
+img6 & S\&P & 33.55 & 23.44 & Spatial \\
+img7 & Gaussian & 29.13 & 30.67 & Freq \\
+img8 & Periodic & 25.11 & 31.04 & Freq \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-\subsection{Storage Requirements}
-File size for encoded.bin = 1 byte (header) + size² bytes (pixels)
-\begin{itemize}
-\item 100×100 at any bit depth: 10,001 bytes
-\item 200×200 at any bit depth: 40,001 bytes
-\item 400×400 at any bit depth: 160,001 bytes
-\item 800×800 at any bit depth: 640,001 bytes
-\end{itemize}
+Results show that spatial filtering performs best for impulse noise, while frequency-domain filtering is superior for Gaussian and periodic noise.
 
-\section{Error Analysis}
-Quantization error arises due to rounding during intensity mapping. Spatial sampling error occurs due to loss of high frequency components. Both errors are irreversible and accumulate during reconstruction.
+\section{Discussion}
 
-\section{Applications}
-This encoder-decoder system demonstrates concepts applicable to:
-\begin{itemize}
-\item Understanding image compression fundamentals
-\item Educational tool for digital image processing courses
-\item Prototyping low-resolution vision systems for IoT devices
-\item Demonstrating trade-offs between quality and storage
-\item Foundation for more advanced compression techniques (JPEG, PNG)
-\end{itemize}
+The experimental results confirm that adaptive filtering significantly improves denoising effectiveness. Spatial filters are computationally simpler and effective for localized noise, whereas frequency-domain filters provide superior performance for structured or high-frequency noise.
+
+The combination of automatic noise detection and adaptive filtering ensures improved generalization across diverse noise conditions.
 
 \section{Conclusion}
-A complete four-stage image encoder-decoder pipeline was successfully implemented in Python. The system converts PNG images to text matrices, applies user-selected spatial and intensity quantization, stores data in a compact binary format with a one-byte header, and reconstructs images with observable quality degradation based on resolution choices. The implementation demonstrates fundamental concepts of digital image sampling, quantization, and the trade-offs between image quality and data size. The modular design allows easy experimentation with different resolution parameters, providing valuable insight into digital image representation.
+
+An adaptive image denoising system was successfully implemented using spatial and frequency-domain techniques. The proposed approach effectively identifies noise types and applies appropriate filters, achieving improved PSNR and SSIM values. Experimental evaluation across eight images demonstrates that adaptive selection of filtering methods yields better results compared to fixed filtering strategies. Future work may include deep learning-based denoising models and real-time implementation.
 
 \section*{Acknowledgement}
-I would like to express my sincere gratitude to Professor Jignesh Patel for providing this project as a learning opportunity. His guidance and the practical nature of this assignment have significantly enhanced my understanding of digital image processing concepts, particularly spatial and intensity resolution. This hands-on implementation has been invaluable in bridging the gap between theoretical knowledge and practical application.
+
+We sincerely thank Professor Jignesh Patel for providing this project opportunity and for his valuable guidance in understanding practical digital image processing techniques.
 
 \begin{thebibliography}{3}
 
 \bibitem{github}
-Project Repository, Available: \href{https://github.com/venom-am/Spatial-Resolution-and-Intensity-Resolution}{https://github.com/venom-am/Spatial-Resolution-and-Intensity-Resolution}
+Github Link [Online]: \href{https://github.com/IIITV-Image-Processing/lab05}{https://github.com/IIITV-Image-Processing/lab05}
 
 \end{thebibliography}
 
