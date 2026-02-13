@@ -1,0 +1,253 @@
+
+\documentclass[conference]{IEEEtran}
+
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{listings}
+\usepackage{cite}
+\usepackage{float}
+\usepackage{array}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue
+}
+
+\lstset{
+  basicstyle=\footnotesize\ttfamily,
+  frame=single,
+  breaklines=true,
+  columns=fullflexible
+}
+
+\title{Analysis of Spatial and Intensity Resolution in Digital Images Using an Encoder-Decoder}
+
+\author{
+\IEEEauthorblockA{
+Abhishek Misal  - 202352302 \\
+Nitin kumar  - 202352323 \\
+Mohd Anas - 202352322
+}
+}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Digital images are represented by discrete spatial samples and discrete intensity levels. This project implements a complete image encoder-decoder system that demonstrates spatial resolution and intensity resolution concepts. The system converts images to text matrices, allows selection of spatial resolution (100x100, 200x200, 400x400, 800x800) and intensity resolution (1, 2, 4, 8 bits), and uses a compact binary format with a one-byte header for encoding. The implementation uses Python with PIL for image I/O and implements custom sampling, quantization, and dequantization algorithms. The project provides practical insight into how resolution parameters affect image quality, storage requirements, and visual degradation.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Spatial Resolution, Intensity Resolution, Image Sampling, Quantization, Encoder Decoder System, Digital Image Processing
+\end{IEEEkeywords}
+
+\section{Introduction}
+Digital image processing is a fundamental area in computer engineering and multimedia systems. A digital image is obtained by sampling a continuous spatial signal and quantizing its intensity values into discrete levels. The visual quality and storage size of a digital image depend primarily on spatial resolution and intensity resolution.
+
+In practical applications such as image transmission, storage systems, and embedded vision devices, it is often necessary to reduce image size while maintaining acceptable visual quality. This reduction is achieved by controlling sampling density and intensity precision. However, improper selection of these parameters leads to severe degradation.
+
+This experiment aims to bridge the gap between theory and practice by implementing a complete encoder decoder system that explicitly controls spatial and intensity resolution. The implementation avoids inbuilt image processing functions to ensure conceptual clarity.
+
+\section{Objectives}
+The objectives of this experiment are:
+\begin{itemize}
+\item To understand the role of spatial sampling in digital images.
+\item To study uniform intensity quantization and its visual effects.
+\item To implement a user controlled encoder decoder system.
+\item To design a compact header based image storage format.
+\item To analyze visual degradation caused by resolution reduction.
+\end{itemize}
+
+\section{Theoretical Background}
+
+\subsection{Digital Image Representation}
+A grayscale digital image can be represented as a two dimensional function:
+\[
+f(x,y), \quad 0 \leq x < M, \; 0 \leq y < N
+\]
+where $x$ and $y$ denote spatial coordinates and $f(x,y)$ denotes pixel intensity.
+
+\subsection{Spatial Resolution}
+Spatial resolution refers to the number of pixels used to represent the image. Higher spatial resolution captures fine details, whereas lower resolution results in aliasing and block artifacts. Spatial sampling reduces resolution by selecting fewer samples from the original grid.
+
+\subsection{Intensity Resolution}
+Intensity resolution determines the number of discrete gray levels. If $b$ bits are used, the number of gray levels is:
+\[
+L = 2^b
+\]
+Lower intensity resolution causes banding and false contouring effects.
+
+\subsection{Uniform Quantization}
+Uniform quantization maps continuous intensities to discrete levels using:
+\[
+Q(x) = \left\lfloor \frac{x \times L}{256} \right\rfloor
+\]
+This method is simple but introduces quantization error.
+
+\section{System Overview}
+The system consists of four functional modules:
+\begin{itemize}
+\item Image to Text Converter (convert\_image.py)
+\item Encoder Module (encoder.py)
+\item Decoder Module (decoder.py)
+\item Text to Image Converter (matrix\_to\_image.py)
+\end{itemize}
+
+The converter transforms PNG images into text matrices. The encoder processes these matrices with user-selected spatial and intensity resolutions, storing them in a compact binary format. The decoder reconstructs the text matrix from the binary file, and the final converter generates the output PNG image.
+
+\section{Encoding Algorithm}
+
+\begin{algorithm}[H]
+\caption{Image Encoding Algorithm}
+\begin{algorithmic}[1]
+\STATE Read image matrix from text file
+\STATE Crop to central square region
+\STATE Prompt user for spatial resolution (100x100, 200x200, 400x400, 800x800)
+\STATE Resize image using nearest neighbor sampling
+\STATE Prompt user for intensity resolution (1, 2, 4, or 8 bits)
+\STATE Apply uniform quantization based on bit depth
+\STATE Create 1-byte header: (spatial\_index << 2) | intensity\_index
+\STATE Write header and quantized pixels to binary file
+\end{algorithmic}
+\end{algorithm}
+
+\section{Encoder Implementation Details}
+
+\subsection{Image to Text Conversion}
+The original PNG image is converted to grayscale using PIL's convert("L") method. Each pixel intensity (0-255) is written to a text file with space-separated values. This text representation allows easy inspection and processing.
+
+\subsection{Spatial Sampling Implementation}
+After cropping to a square, the image is resized using nearest neighbor sampling:
+\[
+\text{src\_i} = \left\lfloor \frac{i \times \text{old\_size}}{\text{new\_size}} \right\rfloor
+\]
+\[
+\text{src\_j} = \left\lfloor \frac{j \times \text{old\_size}}{\text{new\_size}} \right\rfloor
+\]
+
+\subsection{Quantization Implementation}
+Uniform quantization maps 256 gray levels to $2^b$ levels:
+\[
+\text{quantized} = \left\lfloor \frac{\text{pixel}}{\text{step}} \right\rfloor, \quad \text{step} = \frac{256}{2^b}
+\]
+
+\subsection{Header Design}
+A single byte header encodes both resolution parameters:
+\[
+\text{header} = (\text{spatial\_index} \ll 2) \; | \; \text{intensity\_index}
+\]
+where spatial\_index and intensity\_index are 0-3 representing the user's selection.
+
+\section{Decoding Algorithm}
+
+\begin{algorithm}[H]
+\caption{Image Decoding Algorithm}
+\begin{algorithmic}[1]
+\STATE Read binary encoded file
+\STATE Extract header byte
+\STATE Parse spatial\_index = (header >> 2) \& 0b11
+\STATE Parse intensity\_index = header \& 0b11
+\STATE Map indices to actual values (size, bits)
+\STATE Read size × size quantized pixels from file
+\STATE Dequantize: reconstructed = quantized × step
+\STATE Write reconstructed intensities to text file
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Dequantization}
+The dequantization process reverses quantization:
+\[
+\text{pixel} = \text{quantized\_value} \times \text{step}
+\]
+where:
+\[
+\text{step} = \frac{255}{2^b - 1} \quad \text{for } 2^b > 1
+\]
+
+\section{Experimental Results}
+
+\subsection{Input Image}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\linewidth]{./input.png}
+\caption{Original Input Image (input.png)}
+\label{fig:input}
+\end{figure}
+
+\subsection{Reconstructed Output Image}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\linewidth]{./reconstructed.png}
+\caption{Reconstructed Image (reconstructed.png) - Generated using 800 × 800 pixels spatial resolution and 8-bit grayscale intensity resolution}
+\label{fig:reconstructed}
+\end{figure}
+
+\subsection{Pipeline Workflow}
+The complete pipeline consists of:
+\begin{enumerate}
+\item \textbf{convert\_image.py}: Converts input.png to input\_image.txt (grayscale text matrix)
+\item \textbf{encoder.py}: Encodes input\_image.txt to encoded.bin with selected resolutions
+\item \textbf{decoder.py}: Decodes encoded.bin to reconstructed\_image.txt
+\item \textbf{matrix\_to\_image.py}: Converts reconstructed\_image.txt back to reconstructed.png
+\end{enumerate}
+
+\section{Comparative Analysis}
+
+\subsection{Spatial Resolution Effects}
+The system offers four spatial resolutions:
+\begin{itemize}
+\item 100 × 100: Severe pixelation, loss of fine details
+\item 200 × 200: Noticeable blockiness, moderate detail loss
+\item 400 × 400: Good visual quality for most applications
+\item 800 × 800: High quality, preserves most details
+\end{itemize}
+
+\subsection{Intensity Resolution Effects}
+Four intensity levels are available:
+\begin{itemize}
+\item 1 bit (2 levels): Binary image, extreme contouring
+\item 2 bits (4 levels): Severe false contouring, posterization
+\item 4 bits (16 levels): Visible banding in smooth regions
+\item 8 bits (256 levels): Full grayscale, no visible quantization
+\end{itemize}
+
+\subsection{Storage Requirements}
+File size for encoded.bin = 1 byte (header) + size² bytes (pixels)
+\begin{itemize}
+\item 100×100 at any bit depth: 10,001 bytes
+\item 200×200 at any bit depth: 40,001 bytes
+\item 400×400 at any bit depth: 160,001 bytes
+\item 800×800 at any bit depth: 640,001 bytes
+\end{itemize}
+
+\section{Error Analysis}
+Quantization error arises due to rounding during intensity mapping. Spatial sampling error occurs due to loss of high frequency components. Both errors are irreversible and accumulate during reconstruction.
+
+\section{Applications}
+This encoder-decoder system demonstrates concepts applicable to:
+\begin{itemize}
+\item Understanding image compression fundamentals
+\item Educational tool for digital image processing courses
+\item Prototyping low-resolution vision systems for IoT devices
+\item Demonstrating trade-offs between quality and storage
+\item Foundation for more advanced compression techniques (JPEG, PNG)
+\end{itemize}
+
+\section{Conclusion}
+A complete four-stage image encoder-decoder pipeline was successfully implemented in Python. The system converts PNG images to text matrices, applies user-selected spatial and intensity quantization, stores data in a compact binary format with a one-byte header, and reconstructs images with observable quality degradation based on resolution choices. The implementation demonstrates fundamental concepts of digital image sampling, quantization, and the trade-offs between image quality and data size. The modular design allows easy experimentation with different resolution parameters, providing valuable insight into digital image representation.
+
+\section*{Acknowledgement}
+I would like to express my sincere gratitude to Professor Jignesh Patel for providing this project as a learning opportunity. His guidance and the practical nature of this assignment have significantly enhanced my understanding of digital image processing concepts, particularly spatial and intensity resolution. This hands-on implementation has been invaluable in bridging the gap between theoretical knowledge and practical application.
+
+\begin{thebibliography}{3}
+
+\bibitem{github}
+Project Repository, Available: \href{https://github.com/venom-am/Spatial-Resolution-and-Intensity-Resolution}{https://github.com/venom-am/Spatial-Resolution-and-Intensity-Resolution}
+
+\end{thebibliography}
+
+\end{document}
